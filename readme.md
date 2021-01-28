@@ -1,4 +1,4 @@
-# redis
+﻿# redis
 
 ```xml
 <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
@@ -10,7 +10,9 @@
 ```
 ## crud
 [link](https://www.cnblogs.com/leskang/p/7840603.html)
+
 以下所有的指令都是console模式的。并发jedis。
+
 ### key操作
 ● exists(key)：确认一个key是否存在
 ● del(key)：删除一个key
@@ -25,6 +27,7 @@
 ● move(key, dbindex)：移动当前数据库中的key到dbindex数据库
 ● flushdb：删除当前选择数据库中的所有key
 ● flushall：删除所有数据库中的所有key
+
 ### set
 string类型，无序，唯一性，实现基于hash表最大的成员个数$2^{31}-1$
 ```
@@ -43,6 +46,7 @@ string类型，无序，唯一性，实现基于hash表最大的成员个数$2^{
 ● smembers(key) ：返回名称为key的set的所有元素
 ● srandmember(key) ：随机返回名称为key的set的一个元素
 ```
+
 ```java
 public void setCrud(){
         String key1="set1",key2="set2";
@@ -67,6 +71,7 @@ public void setCrud(){
     }
 ```
 
+
 ### hash
 hash储存的是一个string 类型的 field（字段） 和 value（值） 的映射表。大小同上，有意思的是如何储存。
 ```
@@ -82,10 +87,13 @@ hash储存的是一个string 类型的 field（字段） 和 value（值） 的�
 ● hvals(key)：返回名称为key的hash中所有键对应的value
 ● hgetall(key)：返回名称为key的hash中所有的键（field）及其对应的value
 ```
+
 ![](img/r1.png)
+
 Java的jedis中有2种hset，第一种和console模式一样第二种则map的。
 
 ![](img/r2.png)
+
 这里的map实际上先转化成map byte然后再转化成行指令在调用hmset，不过hset也可以进行这个操作，hmset在4.0.0后不建议使用。
 
 ### list
@@ -106,8 +114,9 @@ Java的jedis中有2种hset，第一种和console模式一样第二种则map的�
 ```
 
 ### sort set
+
 ```
-六,SortedSet（有序集合）
+SortedSet（有序集合）
 ZADD key score member [[score member] [score member] ...] //将一个或多个 member 元素及其 score 值加入到有序集 key 当中,score 值可以是整数值或双精度浮点数。
 ZRANGE key start stop [WITHSCORES] //返回有序集 key 中，指定区间内的成员,位置按 score 值递增(从小到大)来排序,递增排列。
 ZREVRANGE key start stop [WITHSCORES] //返回有序集 key 中，指定区间内的成员,位置按 score 值递减(从大到小)来排列,递减排列。
@@ -128,6 +137,7 @@ ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGG
 
 ## redis的spring用法
 **redistemplate**
+
 ```java
 //1、通过redisTemplate设置值
 redisTemplate.boundValueOps("StringKey").set("StringValue");
@@ -147,16 +157,22 @@ ops.set("StringValue","StringVaule",1, TimeUnit.MINUTES);
 # Java基础
 
 **LinkedBlockingQueue**
+
 阻塞队列，尾部进入头部出去，2把锁头锁尾锁，可以2端同时进出，但是不能一端操作多次，同一时刻。
 **ImmutableMap**
+
 这里面的元素都是不会变的，所以插入key or value都不能是null。
 
 **CountDownLatch**
+
 类似于一个倒计时的工具，实现底层是共享锁，指定大小，然后调用.await()执行完后释放，继续执行之后的代码。
 
 **LoadingCache**
+
 缓存，在jvm里面的缓存
+
 [link](https://blog.csdn.net/babylovewei/article/details/105556768)
+
 ```java
  private static LoadingCache<Long, String> loadCache(CacheLoader<Long, String> cacheLoader) throws Exception {
     LoadingCache<Long, String> cache = CacheBuilder.newBuilder()
@@ -179,10 +195,13 @@ ops.set("StringValue","StringVaule",1, TimeUnit.MINUTES);
     return cache;
   }
 ```
+
 # spring
 ## 注解
 ### 如何产生新的注解
+
 spring和Java自带的注解没有办法满足我们所有的需求，我们仍需要新的注解。
+
 ```java
 @Target({ElementType.METHOD,ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -242,60 +261,98 @@ public class InterceptorTrainConfigurer implements WebMvcConfigurer {
 ```
 
 **@ControllerAdvice**
+
 这是对错误处理的截断，如果执行出错就会进行跳转到类里继续执行/
+
 **@ExceptionHandler**
+
 在上一条指令里面可以设置参数执行对应错误的放回。其实我以为如果这个在出错就会递归执行，但没想到我的想法被他看透了，出错了只能执行一次然后直接返回500抛出异常。
+
 **@Service**
+
 bean需要注入，通过service相当于做了2件事情将名字与类型进行注入，可以在后面指定他的id。他匹配过程是按照类型，如果需要按照id用@Qualifier 
+
 **@Configuration**
+
 配置了注入，类似于xml文件。@bean会在开始运行的时候自动运行。
+
 **@Bean**
+
 将函数生产的对象放入ioc容器中，把控制权限交给spring。
+
 **@Component**
+
 ![](img/sp3.png)
+
 **@Transactional**
+
 支持事务，可以进行回滚，支持多种事务。
+
 [link](https://developer.ibm.com/zh/languages/java/articles/j-master-spring-transactional-use/)
+
 ![](img/sp5.png)
 
 个人理解：
 注解可以是需要配置拦截器进入的，进入后会进行配置，拦截器前面讲到过的，而是用代理去操作肯定是有原因的，至于为啥也不知道。
+
 **@Qualifier**
+
 可以准确找到那个bean决定用那个bean进行实例化。
+
 **@Order**
+
 并不是控制bean初始化的时间，而是控制注入的顺序。
+
 **@Value**
+
 ![](img/sp4.png)
+
 ## end
 
+
 # mybaits
+
 [link1](https://www.kancloud.cn/digest/andyalien-mybatis/190189)
+
 **trim**
+
 ![](img/mb1.png)
+
 **refid**
+
 \<include refid="Base_Column_List"/>
 \<sql id="Base_Column_List" >name,age\</sql>
+
 就是把Base_Column_List里面的内容copy过来。
 
 **resultmap**
+
 设置返回结果的类似。
 
 **select parament**
+
 ![](img/mb2.png)
+
 如果要返回list\<obejct>只需要设置类路径+object即可。
 resultmap和resulttype不能同时存在。
 
 ## sql record
+
 **DESC**
+
 逆序，使某个字段按照逆序排列。
+
 **order by**
+
 可以按照某一列排序。
 select * from table order by a,b,c
 和联合索引类型。
 
 **group by**
+
 把一个字段相同的分在一起，然后进行一些操作。
 ![](img/sql1.png)
+
 # rabbitmq
 参考链接
 https://developer.aliyun.com/article/769883
@@ -311,7 +368,9 @@ Consumer：消息消费者。消费队列中存储的消息。
 
 
 ## 函数
+
 **Queue**
+
 ![](img/r3.png)
 ```
 1. name队列名称
@@ -337,7 +396,9 @@ exchange是一种映射规则，将key指定到value这里就是queue。这样�
 * topic
 * headers
 ```
+
 **bind** 
+
 ![](img/r4.png)
 ![](img/r5.png)
 ![](img/r6.png)
@@ -347,10 +408,13 @@ exchange是一种映射规则，将key指定到value这里就是queue。这样�
 这里网上资料很少，大概是把queue绑定到交换机上面去。还有路由键。应该就是路由链整个过程。
 
 **convandsend**
+
 ![](img/rV1.PNG)
 
 ### direct
+
 **DirectExchange**
+
 ![](img/r8.png)
 就是直接连接，发现相同的key就可以连接消费了。而且消息会被抢掉，如果没有及时的消费。
 主要步骤
@@ -361,10 +425,13 @@ exchange是一种映射规则，将key指定到value这里就是queue。这样�
 4. 通信
 
 ### fannot
+
 这个交换机可以多订阅多发布，
+
 ![](img/r9.png)
 
 ### topic
+
 topic相对于其他的exchange来说，他的roukey可以通过通字符匹配完成匹配。每个队列都有一个自己的名字。
 
 ### 消费者
@@ -384,13 +451,16 @@ public class topicconsumer {
 
 # error record
 ## Failed to determine a suitable driver class
+
 [link](https://blog.csdn.net/buyaore_wo/article/details/80741159)
+
 这里继续说没有合适的database。
 错误原因是在initial的时候选择spring web的时候会导致连带jdbc选择而本机器未安装MySQL的就会导致错误。
 
 1. 取消选择jdbc
-3. 注解掉相关的maven依赖
+2. 注解掉相关的maven依赖
 
 ## org.apache.ibatis.binding.BindingException: Invalid bound statement (not found)
+
 [link]("https://blog.csdn.net/sundacheng1989/article/details/81630370")
 基本涵盖。不过我是test里面，有同名文件导致的。
