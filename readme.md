@@ -196,6 +196,27 @@ ops.set("StringValue","StringVaule",1, TimeUnit.MINUTES);
   }
 ```
 
+## NIO
+https://tech.meituan.com/2016/11/04/nio.html
+
+**所有io模型**
+
+![](img/nio1.png)
+
+**reactor**
+![](img/nio2.png)
+步骤1：等待事件到来（Reactor负责）。
+步骤2：将读就绪事件分发给用户定义的处理器（Reactor负责）。
+步骤3：读数据（用户处理器负责）。
+步骤4：处理数据（用户处理器负责）。
+
+**Proactor**
+
+步骤1：等待事件到来（Proactor负责）。
+步骤2：得到读就绪事件，执行读数据（现在由Proactor负责）。
+步骤3：将读完成事件分发给用户处理器（Proactor负责）。
+步骤4：处理数据（用户处理器负责）。
+
 # spring
 ## 注解
 ### 如何产生新的注解
@@ -448,6 +469,18 @@ public class topicconsumer {
 
 ```
 
+## 升入学习
+### ack
+有ack机制，需要返回，如果没有返回则认为消息没有消费成功，需要给别人继续消费。如果忘记返回ack会造成严重的错误。
+
+http://www.iocoder.cn/RabbitMQ/good-collection/?vip
+
+
+# git
+git分布式版本控制器。
+![](img/git1.png)
+
+
 
 # error record
 ## Failed to determine a suitable driver class
@@ -464,3 +497,72 @@ public class topicconsumer {
 
 [link]("https://blog.csdn.net/sundacheng1989/article/details/81630370")
 基本涵盖。不过我是test里面，有同名文件导致的。
+
+# 协议
+协议的本质是一种标准，只有遵守了标准才能够进行沟通。
+## AMQP
+https://www.rabbitmq.com/resources/specs/amqp0-9-1.pdf
+Advanced Message Queuing Protocol（高级消息队列协议）
+他很多概念和rabbitmq类似，因为是基于amqp协议开发的。
+
+![](img/a1.png)
+
+![](img/a2.png)
+
+**queue**
+
+![](img/a3.png)
+
+**routkey**
+
+![](img/a4.png)
+
+**message flow**
+
+![](img/a5.png)
+
+
+![](img/a6.png)
+
+如果消息到了但是没有标明队列可以选择丢掉或者返回给producer。消息到了之后会去找消费者，如果没有放入内存或者磁盘，知道消费为止。
+
+**exchange type**
+
+![](img/a7.png)
+
+这里只有2种exchange而rabbitmq有4种，但是queue有3种。
+
+**queue life**
+
+![](img/a8.png)
+
+**bindings**
+
+```
+Queue.Bind <queue> TO <exchange> WHERE <condition>
+```
+
+**share queue**
+
+![](img/a9.png)
+
+**reply queue**
+
+![](img/a10.png)
+
+**广播**
+
+![](img/a11.png)
+![](img/a12.png)
+
+匿名队列使用的是topic的exchange。所以绑定上可以绑定到不同的队列。
+
+### connect class
+
+![](img/a13.png)
+
+整个过程分为3部分，连接和开虚拟主机和结束。
+
+**channel**
+
+主要原因是如果并发量大，频繁创建销毁tcp连接会导致端口紧张，而且需要等待2msl，所以为了高效的完成任务所以需要重复的使用connect。一个connect可以有多个channel。所有的客户端操作都是走channel的，包装起来。这个的好处就是削掉峰。
