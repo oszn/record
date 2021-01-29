@@ -155,6 +155,35 @@ ops.set("StringValue","StringVaule",1, TimeUnit.MINUTES);
 
 ```
 # Java基础
+**位运算**
+
+位运算可以做很多事情，可以解决很多算法，也可以用来完成协议。按照理论来说可以这么定义一个协议，把协议定位多少位，我们可以来假装设定一个协议，比如选择搭配的衣服种类。
+```
+public class protecl {
+    static int upcloth=4;//不超过16件衣服
+    static int downcloth=4;
+    static int shose=3;
+    public int setCloth(int up,int down,int sho){
+        Integer _up=(up%(1<<upcloth))<<(downcloth+shose);
+        Integer _down=(down%(1<<downcloth))<<shose;
+        return _up+_down+sho%(1<<shose);
+    }
+    public int get(Integer prot){
+
+        Integer sho=prot&((1<<shose)-1);
+        prot=prot>>3;
+        int down=prot&((1<<downcloth)-1);
+        return 0;
+    }
+
+    public static void main(String[] args) {
+        protecl p=new protecl();
+        int c=p.setCloth(11,8,5);
+        p.get(c);
+    }
+}
+
+```
 
 **LinkedBlockingQueue**
 
@@ -216,6 +245,12 @@ https://tech.meituan.com/2016/11/04/nio.html
 步骤2：得到读就绪事件，执行读数据（现在由Proactor负责）。
 步骤3：将读完成事件分发给用户处理器（Proactor负责）。
 步骤4：处理数据（用户处理器负责）。
+
+
+
+
+# quartz
+quartz是用来执行定时任务的。
 
 # spring
 ## 注解
@@ -566,3 +601,25 @@ Queue.Bind <queue> TO <exchange> WHERE <condition>
 **channel**
 
 主要原因是如果并发量大，频繁创建销毁tcp连接会导致端口紧张，而且需要等待2msl，所以为了高效的完成任务所以需要重复的使用connect。一个connect可以有多个channel。所有的客户端操作都是走channel的，包装起来。这个的好处就是削掉峰。
+
+## rpc协议
+引用链接
+https://cloud.tencent.com/developer/article/1619589
+https://blog.csdn.net/testcs_dn/article/details/78050590/
+https://www.jianshu.com/p/7d6853140e13
+https://www.cnblogs.com/skyfsm/p/6379995.html
+
+
+
+rpc服务本质上就是函数的远程调用。
+
+![](img/rpc1.png)
+
+过程
+
+![](img/rpc2.png)
+![](img/rpc3.png)
+
+并没有很懂网络上讨论的东西，大部分声音是将一个大的模块细分出来，不用把功能部署在一起，也有人说这是soa。
+
+不过仔细一想面向不同，你看HTTP协议规定了很多事情，但对于一个只注重服务调用的服务，不需要这么多无用的字段，可以简化很多操作。H
