@@ -156,11 +156,82 @@ ops.set("StringKey", "StringVaule");
 ops.set("StringValue","StringVaule",1, TimeUnit.MINUTES);
 
 ```
+
+**更新后用法**
+
+学了2天设计模式了，所以针对这个问题，我们先需要分析redis该如何设计才合理，首先他的过程是连接然后使用。那么问题来了，我们可能有很多种的使用方式，比如针对一个服务使用一个redis。我们这里可以使用工厂模式，首先是设计一个基础的连接返回连接，然后在针对不同的连接模式设置工厂，最后在实际中生成所需的redis实例。
+
+
+
+连接逻辑
+```java
+package com.example.demo.liuyi.component.cache.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.stereotype.Component;
+
+@Configuration
+public class redisConfig {
+    protected RedisConnectionFactory createConnectionFactory(String host, int port, String password) {
+        RedisStandaloneConfiguration configuration =
+                new RedisStandaloneConfiguration(host, port);
+
+        configuration.setPassword(password);
+        return new JedisConnectionFactory(configuration);
+    }
+}
+
+```
+实际的缓存连接
+```Java
+package com.example.demo.liuyi.component.cache.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+@Configuration
+public class RedisCacheTemplateConfig extends redisConfig{
+    @Value("${spring.redis.cache.host}")
+    private String host;
+    @Value("${spring.redis.cache.port}")
+    private Integer port;
+    @Value("${spring.redis.cache.password}")
+    private String password;
+
+    @Bean()
+    public RedisConnectionFactory cacheRedisConnectionFactory() {
+        return createConnectionFactory(host, port, password);
+    }
+
+    @Bean(RedisTemplateConstant.CacheRedisTemplate)
+    public RedisTemplate<String, String> redisTemplate(){
+        RedisTemplate<String, String> redisTemplate = new StringRedisTemplate();
+        redisTemplate.setConnectionFactory(cacheRedisConnectionFactory());
+        return redisTemplate;
+    }
+}
+```
+
+这样我们可以针对不同的需求连接不同的，这样你需要用那个template只需要从ioc容器中拿到即可。
+
+**database**
+
+这个参数设置我一开始不知道。导致我在redis-cli里面一直查不到我想要的东西，而且服务端没有任何的报错所以就感觉不对劲，而我查找这个数据库里面的一个key还是null，一度怀疑人生，是不是这个世界错了。后来仔细了解这个参数后，才发现redis也有数据库这个概念，而且是相互隔离的，我使用的是1，但是default是0.
+所以导致这个问题存在，在redis-cli里面切换database的命令是select。
+
+
 # Java基础
 **位运算**
 
 位运算可以做很多事情，可以解决很多算法，也可以用来完成协议。按照理论来说可以这么定义一个协议，把协议定位多少位，我们可以来假装设定一个协议，比如选择搭配的衣服种类。
-```
+```Java
 public class protecl {
     static int upcloth=4;//不超过16件衣服
     static int downcloth=4;
@@ -182,6 +253,20 @@ public class protecl {
         protecl p=new protecl();
         int c=p.setCloth(11,8,5);
         p.get(c);
+    }
+}
+```
+
+其实这还可以用作id生成器，用long来说他是64位的，一个时间锉可以战48位其他的随意分配你想分配的，就可以生成一个唯一的id了，如果是innodb的话这就是主键了，所以你甚至可以根据这个来进行排序，作为唯一id你想通过人区别，就把人的唯一id放在最前面，你想通过时间，就把时间放在前面。
+
+```java 
+
+public class generateId {
+    public static long fromtime(int uid){
+        long date=System.currentTimeMillis();
+        date=date<<16;
+        date+=uid;
+        return date;
     }
 }
 
