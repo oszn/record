@@ -14,6 +14,7 @@
 以下所有的指令都是console模式的。并发jedis。
 
 ### key操作
+```
 ● exists(key)：确认一个key是否存在
 ● del(key)：删除一个key
 ● type(key)：返回值的类型
@@ -27,6 +28,7 @@
 ● move(key, dbindex)：移动当前数据库中的key到dbindex数据库
 ● flushdb：删除当前选择数据库中的所有key
 ● flushall：删除所有数据库中的所有key
+```
 
 ### set
 string类型，无序，唯一性，实现基于hash表最大的成员个数$2^{31}-1$
