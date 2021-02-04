@@ -247,10 +247,185 @@ https://tech.meituan.com/2016/11/04/nio.html
 步骤4：处理数据（用户处理器负责）。
 
 
+# 序列化与反序列化
+[link](https://tech.meituan.com/2015/02/26/serialization-vs-deserialization.html)
+序列化和反序列化的意义在于可以将一些对象类型的数据进行传输并且进行储存在分布式时代意义巨大。
 
+![](img/ser3.png)
+
+目前主流的序列化的格式有xml、json、Thrift、Protobuf、Avro等。如果仅仅有格式但是没有idl这种说明类型的文件也是不知道什么意思。所以大部分的都需要idl文件作为辅助结构。
+
+
+```java
+class Address
+{
+    private String city;
+    private String postcode;
+    private String street;
+}
+public class UserInfo
+{
+    private Integer userid;
+    private String name;
+    private List<Address> address;
+}
+```
+**xml**
+
+xml是符合soap的思想的。他的idl文件是wsdl
+```xml
+<xsd:complexType name='Address'>
+     <xsd:attribute name='city' type='xsd:string' />
+     <xsd:attribute name='postcode' type='xsd:string' />
+     <xsd:attribute name='street' type='xsd:string' />
+</xsd:complexType>
+<xsd:complexType name='UserInfo'>
+     <xsd:sequence>
+     <xsd:element name='address' type='tns:Address'/>
+     <xsd:element name='address1' type='tns:Address'/> 
+     </xsd:sequence>
+     <xsd:attribute name='userid' type='xsd:int' />
+     <xsd:attribute name='name' type='xsd:string' /> 
+</xsd:complexType>
+```
+**json**
+```json
+{"userid":1,"name":"messi","address":[{"city":"北京","postcode":"1000000","street":"wangjingdonglu"}]}
+```
+
+**thrift**
+
+基于rpc框架
+```c++
+struct Address
+{ 
+    1: required string city;
+    2: optional string postcode;
+    3: optional string street;
+} 
+struct UserInfo
+{ 
+    1: required string userid;
+    2: required i32 name;
+    3: optional list<Address> address;
+}
+```
+
+**Protobuf**
+可以HTTP。
+```java
+message Address
+{
+	required string city=1;
+    	optional string postcode=2;
+    	optional string street=3;
+}
+message UserInfo
+{
+	required string userid=1;
+	required string name=2;
+	repeated Address address=3;
+}
+```
+
+**arov**
+
+![](img/ser4.png)
+
+总结多款相比下，xml看起来相当fw，但是是最清晰的。所以整体来说选择上是理解度和空间和协议支持的权衡，如果你的框架很完全不需要理解也不需要调试，那么选择二进制绝对是最省空间的选择，如果想要选择清晰度那么以上的框架基本都支持，json的不好在于不是很清晰，没有直接对应的文件支持，需要自己去解析，解析也是需要速度的。所以在不同的场景做不同的事情。
 
 # quartz
 quartz是用来执行定时任务的。
+
+quartz的构成分为几个部分job，trigger，schedule。
+job也就是定时执行的任务，而trigger是触发器，schedule是用来调度，可以设置组概念，这样就可以一任务多触发或者多次利用，组的概念其实很常见。
+
+![](https://upload-images.jianshu.io/upload_images/763193-1a81cd9837f16b16.png?imageMogr2/auto-orient/strip|imageView2/2/w/668/format/webp)
+
+
+## test
+```java
+首先注册一个job重写他的execute。
+
+package quartzTest;
+
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class quarz implements Job {
+    private Logger log= LoggerFactory.getLogger(this.getClass());
+    @Override
+    public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+        log.info("嘤嘤嘤");
+    }
+}
+
+public class simplerJob implements Job {
+    private Logger log= LoggerFactory.getLogger(this.getClass());
+    static int a=0;
+    @Override
+    public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+        log.info("我不做人了"+a);
+        a+=1;
+    }
+}
+
+```
+```java
+package quartzTest;
+
+import org.quartz.*;
+import org.quartz.impl.StdSchedulerFactory;
+
+import java.util.Date;
+
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
+
+public class mytrigger {
+    public static void main(String[] args) {
+        //工厂
+        SchedulerFactory factory=new StdSchedulerFactory();
+        try {
+            //任务调度
+            Scheduler scheduler=factory.getScheduler();
+            //job
+            JobDetail jobDetail= JobBuilder.newJob(quarz.class).withDescription("hello world").withIdentity("group1","liu").build();
+            JobDetail SimplerjobDetail= JobBuilder.newJob(simplerJob.class).withDescription("hello world").withIdentity("group2","liu").build();
+            //触发器
+            Trigger trigger= newTrigger().
+                    withIdentity("group1","mytirgger").
+                    withDescription("hello trigger").
+                    startAt(new Date(System.currentTimeMillis())).
+                    withSchedule(CronScheduleBuilder.cronSchedule("0/4 * * * * ?")).
+                    build();
+            //绑定
+            SimpleTrigger simpleTrigger = newTrigger()
+                    .withIdentity("simpleTrigger", "group2")
+                    .startAt(new Date(System.currentTimeMillis()))  // if a start time is not given (if this line were omitted), "now" is implied
+                    .withSchedule(simpleSchedule()
+                            .withIntervalInSeconds(1)
+                            .withRepeatCount(10)) // note that 10 repeats will give a total of 11 firings
+//                    .forJob(SimplerjobDetail) // identify job with handle to its JobDetail itself
+                    .build();
+            scheduler.scheduleJob(SimplerjobDetail,simpleTrigger);
+            scheduler.scheduleJob(jobDetail,trigger);
+//            scheduler.scheduleJob(s)
+            scheduler.start();
+        } catch (SchedulerException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+## crone规则
+[link](https://www.cnblogs.com/skyblue/p/3296350.html)
+
+![](img/quartz1.png)
 
 # spring
 ## 注解
@@ -535,6 +710,13 @@ git分布式版本控制器。
 
 # 协议
 协议的本质是一种标准，只有遵守了标准才能够进行沟通。
+## 时间戳
+时间戳本质上也是一种规定
+T = ((X * 24 + hour) * 60 + min) * 60 + sec
+
+x是从1970年1月1日开始的天数。
+X = year/4 - year/100 + year/400 + 367*mon/12 + day + year *365 - 719499
+
 ## AMQP
 https://www.rabbitmq.com/resources/specs/amqp0-9-1.pdf
 Advanced Message Queuing Protocol（高级消息队列协议）
