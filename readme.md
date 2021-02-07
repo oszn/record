@@ -1,14 +1,6 @@
 ﻿# redis
 
-```xml
-<!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
-<dependency>
-    <groupId>redis.clients</groupId>
-    <artifactId>jedis</artifactId>
-    <version>3.1.0</version>
-</dependency>
-```
-## crud
+
 [link](https://www.cnblogs.com/leskang/p/7840603.html)
 
 以下所有的指令都是console模式的。并发jedis。
@@ -138,8 +130,35 @@ ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGG
 ```
 
 ## redis的spring用法
-**redistemplate**
 
+**redistemplate**
+```xml
+<!--redis-->
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-redis</artifactId>
+			<version>2.3.1.RELEASE</version>
+		</dependency>
+
+		<dependency>
+			<groupId>redis.clients</groupId>
+			<artifactId>jedis</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+```
+```yml
+spring:
+  redis:
+    cache:
+      port: 6379
+      host: 127.0.0.1
+#      database: 1
+      password: 123456
+```
 ```java
 //1、通过redisTemplate设置值
 redisTemplate.boundValueOps("StringKey").set("StringValue");
@@ -218,7 +237,22 @@ public class RedisCacheTemplateConfig extends redisConfig{
     }
 }
 ```
+拿到相关的bean
+```java
+@Component("RedisCache")
+public class RedisCache extends RedisCacheCore {
 
+    @Qualifier(RedisTemplateConstant.CacheRedisTemplate)
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    @PostConstruct
+    public void init(){
+        super.setRedisTemplate(redisTemplate);
+    }
+}
+
+```
 这样我们可以针对不同的需求连接不同的，这样你需要用那个template只需要从ioc容器中拿到即可。
 
 **database**
@@ -333,6 +367,47 @@ https://tech.meituan.com/2016/11/04/nio.html
 步骤3：将读完成事件分发给用户处理器（Proactor负责）。
 步骤4：处理数据（用户处理器负责）。
 
+## 线程池
+
+线程池在Java中是一个常见的存在，线程池的存在的意义在于，线程的的创建是需要调用操作系统层面的api，而操作系统创建一个线程的过程是需要进行好几个操作，基础的注册、创建线程专属的栈与寄存器等。而这个需要进行系统调用，系统调用需要把用户空间的数据copy到内核空间，核心态能使用的是一层操作系统封装的api，一般的c函数会比系统调用快1到2个数量级，也就是几十倍。如果频繁的创建和销毁线程，可能需要调用很多次系统调用导致速度不佳。
+
+不同的业务场景对应不同的搭配选择。
+**base code**
+[link](https://tech.meituan.com/2020/04/02/java-pooling-pratice-in-meituan.html)
+```java
+//这是一个简单的demo，什么处理方式，队列呀那些的我就不讲了，给一个very nice的link
+public class ThreadPool {
+    public static Logger logger= LoggerFactory.getLogger(walk.class);
+    public static class walk implements Runnable{
+        public int getPersonId() {
+            return personId;
+        }
+
+        public void setPersonId(int personId) {
+            this.personId = personId;
+        }
+
+        public int personId;
+        @Override
+        public void run() {
+            logger.info("第{}个人在走路",personId);
+        }
+    }
+    public static void main(String[] args) throws InterruptedException {
+        BlockingQueue queue=new ArrayBlockingQueue(8);
+        ThreadFactory threadFactory=new TaskThreadFactory("liuyi-",true,1);
+        ThreadPoolExecutor threadPoolExecutor=new ThreadPoolExecutor(8,32,120,TimeUnit.SECONDS,queue,threadFactory,new ThreadPoolExecutor.DiscardPolicy());
+        for(int i=0;i<100;i++){
+            walk w=new walk();
+            w.setPersonId(i);
+//            threadFactory.newThread(w);
+            System.out.println(i);
+            threadPoolExecutor.execute(w);
+        }
+        Thread.sleep(10*1000);
+    }
+}
+```
 
 # 序列化与反序列化
 [link](https://tech.meituan.com/2015/02/26/serialization-vs-deserialization.html)
@@ -431,6 +506,14 @@ job也就是定时执行的任务，而trigger是触发器，schedule是用来�
 
 
 ## test
+```xml
+<!-- maven依赖没给就是有点坑 -->
+		<dependency>
+			<groupId>org.quartz-scheduler</groupId>
+			<artifactId>quartz</artifactId>
+			<version>2.3.2</version>
+		</dependency>
+```
 ```java
 首先注册一个job重写他的execute。
 
@@ -892,3 +975,9 @@ rpc服务本质上就是函数的远程调用。
 并没有很懂网络上讨论的东西，大部分声音是将一个大的模块细分出来，不用把功能部署在一起，也有人说这是soa。
 
 不过仔细一想面向不同，你看HTTP协议规定了很多事情，但对于一个只注重服务调用的服务，不需要这么多无用的字段，可以简化很多操作。H
+
+
+# mysql
+MySQL的原理部分其实我感觉我已经很懂了，但是实际应该场景确实还是没有经验所以决定学习下。
+我会找到一大堆好的文章，来记录
+[link1](https://dbaplus.cn/news-11-2979-1.html)
