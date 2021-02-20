@@ -130,6 +130,31 @@ ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGG
 ```
 
 ## redis的spring用法
+**快速测试**
+```java
+    public static void main(String[] args) {
+        //连接本地的 Redis 服务
+        Jedis jedis = new Jedis("http://localhost:6379");
+        jedis.auth("douqu");
+        System.out.println("连接成功");
+        //查看服务是否运行
+        System.out.println("服务正在运行: "+jedis.ping());
+        System.out.println("======================key==========================");
+        //清除当前数据库所有数据
+        jedis.flushDB();
+        //设置键值对
+        jedis.set("xiaohua","我是小花");
+        //查看存储的键的总数
+        System.out.println(jedis.dbSize());
+        //取出设置的键值对并打印
+        System.out.println(jedis.get("xiaohua"));
+
+//        RedisCache redisCache=new RedisCache();
+//        redisCache.putCache("hello","xxx");
+
+
+    }
+```
 
 **redistemplate**
 ```xml
@@ -504,6 +529,9 @@ job也就是定时执行的任务，而trigger是触发器，schedule是用来�
 
 ![](https://upload-images.jianshu.io/upload_images/763193-1a81cd9837f16b16.png?imageMogr2/auto-orient/strip|imageView2/2/w/668/format/webp)
 
+**代替品**
+
+如果使用的是springboot那么就可以直接使用schedule的来进行操作，规则类似，不过需要在类上注释@EnableScheduling在加上想添加的注解类型。
 
 ## test
 ```xml
@@ -981,3 +1009,140 @@ rpc服务本质上就是函数的远程调用。
 MySQL的原理部分其实我感觉我已经很懂了，但是实际应该场景确实还是没有经验所以决定学习下。
 我会找到一大堆好的文章，来记录
 [link1](https://dbaplus.cn/news-11-2979-1.html)
+
+
+## mysql的索引
+
+**原则**
+
+索引的建立原则，我觉得主要注意几个部分
+1. 不要设置null的存在，有null存在如果只有1个倒也无所谓，但是如果大片出现，即使建立索引，也会扫描大量的数据。
+
+2. 尽量选择列重复度小的列做索引，也是从btree遍历的方式来看，如果你对1w数据只有3个类型的做索引，那么还是需要继续扫描那大类数据。
+
+3. 对于一些存在可以查2个，也可以查一个的，建立联合索引，一个3元联合索引相当于3个索引，假设你需要存一个uid,email这种，很多时候你需要对uid进行查询，同时也需要对uid和email查询，所以联合索引就很适合。
+
+4. 索引覆盖存在的意义也很重要，索引覆盖也就是查询字段都在索引中，根据innodb的设计原则，都会有一个聚集索引，其他的查询会先查询，然后根据主键回表，也就是索引不储存东西，聚焦索引储存，所以如果索引进行覆盖，就不需要进行第二次查询(回表操作)。
+
+5. 数字类型好于字符类型，从btree的搜索原则来说他会按照字典序匹配吧。也就是前缀相同是需要进一步比较的。
+
+索引的查询原则
+1. 使用like的时候，不要左边是模糊的，这样查询会走全表，因为字符匹配的规则。
+2. 不要使用not<>这种，因为遍历是根据顺序来的。
+3. 不要对字段进行运算操作
+4. 联合索引需要遵循他的创建原则，对(a,b,c)做索引相当于是a先排序，然后每个a排序后面b在排序，然后b在排序后，每个b里面的c在排序。所以你如果只有b和c没有a是肯定没得用的。
+
+普通查询操作
+1. 如果没必要全字段查询就不要全字段查询。
+2. join代替子查询，子查询实质是2次查询。
+3. inner join最好
+4. limit的必要。
+```sql
+SELECT * FROM bilibili0 where mid>(SELECT mid from bilibili0 limit 100000,1) limit 100;
+
+SELECT * from bilibili0 where mid>10 limit 100000,100;
+SELECT * from bilibili0 where mid>10;
+```
+这3个语句区别是什么。
+首先看第二和第三个，你觉得谁查询更快了。那肯定是第二个。其实这个有很多的问题，你要比较很多东西，首先btree和b+tree，b数储存的是磁盘位置，而b+tree是直接的数据，如果是btree那么你就需要他还是需要找，他会把东西放入内存。其实这里最大的问题是limit什么时候起作用，我觉得无论是哪种索引应该都是拿到索引之后开始起作用，也就是从内存拿数据之前，他们查询的行数是相同的，区别是内存的区别，也就是我可能拿的时候知道从第10000行后面在拿100行，其实就运行起来还好，因为后面的还是得算io的，即使你一次那一片。不过他这里索引走的行肯定是一样的。第一个应该是要比后面快的，即使他用了子查询，但是他第一个子查询走索引内存也只拿了1个的，后面又是直接走索引。这里注意主键是没有回表操作的。
+
+看看速度对比
+![](img/mysql4.png)
+![](img/mysql5.png)
+
+然后在来看看io次数
+```
+SHOW PROFILES;//先执行这个查看语句对应的query id
+SHOW PROFILE FOR QUERY 9;
+SHOW PROFILE block io FOR QUERY 84;//这个查看io次数。
+```
+![](img/mysql6.png)
+![](img/mysql7.png)
+![](img/mysql8.png)
+第一个进行了5k多次io而第二个进行了8次。
+而最后一个就是语句1，没有进行io，其实我也很疑惑。
+这里的in是写入操作，out是读取操作。
+
+可以知道还是拿数据花时间多，这就存在一个问题，那就是超时问题。如果你服务端执行时间太长会被认为超时连接。
+
+
+## 分表策略
+首先来理解为啥需要分，当业务到了很大的时候如果不进行分表操作，1kw数据则需要很久才能查询，这种时候就需要进行分表。分表带来的有很多好处也有很多问题。
+
+**垂直**
+
+按照业务进行划分是垂直划分，垂直划分可以解决数据冗杂问题，但是没办法解决单张表过大，跨数据库甚至服务器防问问题。
+
+**水平**
+
+水平是按照规律把表细分，实质是一张表，不过把内容切分，解决了单张表过大问题。存在问题就是数据查询问题，例如我按人hash划分，那么我很难统计一个物品，相反一样，可以人和物品都健一个表。
+
+## EXPLAIN
+
+**用法**
+
+语句前面加上EXPLAIN即可。
+
+**字段**
+
+![](img/mysql3.png)
+
+select_type：select_type就是select的类型，可以有以下几种：
+
+```js
+SIMPLE：简单SELECT(不使用UNION或子查询等)
+
+PRIMARY：最外面的SELECT
+
+UNION：UNION中的第二个或后面的SELECT语句
+
+DEPENDENT UNION：UNION中的第二个或后面的SELECT语句，取决于外面的查询
+
+UNION RESULT：UNION的结果。
+
+SUBQUERY：子查询中的第一个SELECT
+
+DEPENDENT SUBQUERY：子查询中的第一个SELECT，取决于外面的查询
+
+DERIVED：导出表的SELECT(FROM子句的子查询)
+```
+
+type：这列最重要，显示了连接使用了哪种类别,有无使用索引，是使用Explain命令分析性能瓶颈的关键项之一。
+
+```js
+结果值从好到坏依次是：
+
+system > const > eq_ref > ref > fulltext > ref_or_null > index_merge > unique_subquery > index_subquery > range > index > ALL
+
+一般来说，得保证查询至少达到range级别，最好能达到ref，否则就可能会出现性能问题。
+```
+
+Extra：包含MySQL解决查询的详细信息，也是关键参考项之一。
+
+```js
+Distinct
+一旦MYSQL找到了与行相联合匹配的行，就不再搜索了
+
+Not exists
+MYSQL 优化了LEFT JOIN，一旦它找到了匹配LEFT JOIN标准的行，
+
+就不再搜索了
+
+Range checked for each
+
+Record（index map:#）
+没有找到理想的索引，因此对于从前面表中来的每一 个行组合，MYSQL检查使用哪个索引，并用它来从表中返回行。这是使用索引的最慢的连接之一
+
+Using filesort
+看 到这个的时候，查询就需要优化了。MYSQL需要进行额外的步骤来发现如何对返回的行排序。它根据连接类型以及存储排序键值和匹配条件的全部行的行指针来 排序全部行
+
+Using index
+列数据是从仅仅使用了索引中的信息而没有读取实际的行动的表返回的，这发生在对表 的全部的请求列都是同一个索引的部分的时候
+
+Using temporary
+看到这个的时候，查询需要优化了。这 里，MYSQL需要创建一个临时表来存储结果，这通常发生在对不同的列集进行ORDER BY上，而不是GROUP BY上
+
+Using where
+使用了WHERE从句来限制哪些行将与下一张表匹配或者是返回给用户。如果不想返回表中的全部行，并且连接类型ALL或index， 这就会发生，或者是查询有问题
+
+```
