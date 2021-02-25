@@ -21,6 +21,19 @@
 ● flushdb：删除当前选择数据库中的所有key
 ● flushall：删除所有数据库中的所有key
 ```
+### string
+```
+append key： 将key对应的values总追加某个值。
+incr key：将key中对应的value的值加一
+decr key：将key中对应的值减一
+getrange key 0 2：取出key对应value中的0-2范围对应的值，类似于 between and
+incrby key 2:多步递增
+decrby key 2:多步递减
+setrange key 0 xxx :从0位开始在后面补xxx
+setex key time value:给设置一个key并且给他指定过期时间.(setwithexpire)
+setnx key value:如果不存在设置一个key-value
+
+```
 
 ### set
 string类型，无序，唯一性，实现基于hash表最大的成员个数$2^{31}-1$
