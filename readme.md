@@ -383,6 +383,32 @@ public class generateId {
     return cache;
   }
 ```
+## lambda
+这个东西之前一直不理解存在的意义，很多地方都有这个。他的基本形式是
+(parameters) -> expression
+或
+(parameters) ->{ statements; }
+
+也就是闭包，他可以直接用形式接下来，也可以不。比如一个接口
+```java
+public interface HelloWorld {
+    void sayHello(int s);
+}
+
+```
+我们可以直接如下处理。
+```java
+    HelloWorld helloWorld=(s)->{System.out.println(s);};
+```
+
+这样相对于对helloword进行实例化。
+
+所以这么写合情合理。
+```java
+la.PrintHello((s)->{System.out.println(s);});
+```
+
+为啥这玩意会存在了，你想想，如果我一个接口需要实现很多的不同的，但是只有一条，那么我需要对每个接口，会写很多多余的代码，而且闭包的位置近，代码明确，如果你写过，你就会发现一些问题，那就是代码调试难度增大，没有具体类可以跳转。
 
 ## NIO
 https://tech.meituan.com/2016/11/04/nio.html
